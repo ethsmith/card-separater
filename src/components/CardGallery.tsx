@@ -1,5 +1,5 @@
 import { Download, ZoomIn, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { DetectedCard } from '../services/CardDetectionService';
 
 interface CardGalleryProps {
@@ -7,12 +7,42 @@ interface CardGalleryProps {
   onDownloadAll: () => void;
 }
 
+function dataURLtoBlob(dataURL: string): Blob {
+  const arr = dataURL.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
 export function CardGallery({ cards, onDownloadAll }: CardGalleryProps) {
   const [selectedCard, setSelectedCard] = useState<DetectedCard | null>(null);
+  const [blobUrls, setBlobUrls] = useState<Map<string, string>>(new Map());
+
+  const cardBlobUrls = useMemo(() => {
+    const urls = new Map<string, string>();
+    cards.forEach((card) => {
+      const blob = dataURLtoBlob(card.imageData);
+      const url = URL.createObjectURL(blob);
+      urls.set(card.id, url);
+    });
+    return urls;
+  }, [cards]);
+
+  useEffect(() => {
+    setBlobUrls(cardBlobUrls);
+    return () => {
+      cardBlobUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [cardBlobUrls]);
 
   const handleDownload = (card: DetectedCard, index: number) => {
     const link = document.createElement('a');
-    link.href = card.imageData;
+    link.href = blobUrls.get(card.id) || card.imageData;
     link.download = `pokemon-card-${index + 1}.png`;
     link.click();
   };
@@ -44,7 +74,7 @@ export function CardGallery({ cards, onDownloadAll }: CardGalleryProps) {
           >
             <div className="aspect-[2.5/3.5] relative">
               <img
-                src={card.imageData}
+                src={blobUrls.get(card.id) || card.imageData}
                 alt={`Card ${index + 1}`}
                 className="w-full h-full object-cover"
               />
@@ -87,7 +117,7 @@ export function CardGallery({ cards, onDownloadAll }: CardGalleryProps) {
               <X className="w-8 h-8" />
             </button>
             <img
-              src={selectedCard.imageData}
+              src={blobUrls.get(selectedCard.id) || selectedCard.imageData}
               alt="Selected card"
               className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
