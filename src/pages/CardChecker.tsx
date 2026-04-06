@@ -86,12 +86,12 @@ export function CardChecker() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d')!;
         
-        // Crop to the name region (top-left area of card)
-        // Based on standard Pokemon card proportions
-        const cropX = Math.round(img.width * 0.14);
-        const cropY = Math.round(img.height * 0.04);
-        const cropWidth = Math.round(img.width * 0.50);
-        const cropHeight = Math.round(img.height * 0.08);
+        // Crop to the name region (top area of card)
+        // Name is in the top ~5-12% of the card height, starting after "BASIC" tag
+        const cropX = Math.round(img.width * 0.12);
+        const cropY = Math.round(img.height * 0.03);
+        const cropWidth = Math.round(img.width * 0.55);
+        const cropHeight = Math.round(img.height * 0.07);
         
         canvas.width = cropWidth;
         canvas.height = cropHeight;
@@ -103,15 +103,17 @@ export function CardChecker() {
           0, 0, cropWidth, cropHeight
         );
         
-        // Apply grayscale and threshold for clean OCR
+        // Apply grayscale with contrast boost - no harsh threshold
+        // Pokemon cards have yellow/white text on various backgrounds
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
         
         for (let i = 0; i < data.length; i += 4) {
           // Convert to grayscale
           const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          // Apply threshold - force to black or white
-          const val = gray > 140 ? 255 : 0;
+          // Boost contrast without harsh threshold
+          const contrast = ((gray - 128) * 1.8) + 128;
+          const val = Math.max(0, Math.min(255, contrast));
           data[i] = data[i + 1] = data[i + 2] = val;
         }
         
@@ -259,7 +261,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.0.5
+        v1.0.7
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
