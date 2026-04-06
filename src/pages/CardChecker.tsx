@@ -136,18 +136,23 @@ export function CardChecker() {
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
       });
       setStream(mediaStream);
       setUseCamera(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (err) {
       console.error('Camera error:', err);
       setError('Could not access camera. Please check permissions.');
     }
   };
+
+  useEffect(() => {
+    if (useCamera && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(console.error);
+    }
+  }, [useCamera, stream]);
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -248,6 +253,8 @@ export function CardChecker() {
                   ref={videoRef}
                   autoPlay
                   playsInline
+                  muted
+                  webkit-playsinline="true"
                   className="w-full"
                 />
               </div>
