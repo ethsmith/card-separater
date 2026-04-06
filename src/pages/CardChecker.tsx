@@ -76,6 +76,34 @@ export function CardChecker() {
     };
   };
 
+  const preprocessImage = (imageData: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        ctx.drawImage(img, 0, 0);
+        
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+          const contrast = ((gray - 128) * 1.5) + 128;
+          const val = contrast > 140 ? 255 : contrast < 80 ? 0 : contrast;
+          data[i] = data[i + 1] = data[i + 2] = val;
+        }
+        
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = imageData;
+    });
+  };
+
   const processImage = async (imageData: string) => {
     setIsProcessing(true);
     setError(null);
@@ -83,7 +111,9 @@ export function CardChecker() {
     setImagePreview(imageData);
 
     try {
-      const { data: { text } } = await Tesseract.recognize(imageData, 'eng', {
+      const processedImage = await preprocessImage(imageData);
+      
+      const { data: { text } } = await Tesseract.recognize(processedImage, 'eng', {
         logger: (m) => console.log(m),
       });
 
@@ -136,7 +166,11 @@ export function CardChecker() {
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { 
+          facingMode: { ideal: 'environment' }, 
+          width: { ideal: 1920, min: 1280 }, 
+          height: { ideal: 1080, min: 720 } 
+        },
         audio: false,
       });
       setStream(mediaStream);
@@ -165,7 +199,7 @@ export function CardChecker() {
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0);
-      const imageData = canvas.toDataURL('image/png');
+      const imageData = canvas.toDataURL('image/jpeg', 0.95);
       stopCamera();
       processImage(imageData);
     }
