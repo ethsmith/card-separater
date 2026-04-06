@@ -247,31 +247,30 @@ export function CardChecker() {
           )}
 
           {useCamera && (
-            <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden bg-black">
+            <div className="relative">
+              <div className="relative rounded-2xl overflow-hidden bg-black max-h-[60vh]">
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
                   webkit-playsinline="true"
-                  className="w-full"
+                  className="w-full h-full object-cover max-h-[60vh]"
                 />
-              </div>
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={capturePhoto}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors flex items-center gap-2"
-                >
-                  <Camera className="w-5 h-5" />
-                  Capture
-                </button>
-                <button
-                  onClick={stopCamera}
-                  className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+                  <button
+                    onClick={capturePhoto}
+                    className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors border-4 border-purple-500"
+                  >
+                    <Camera className="w-8 h-8 text-purple-600" />
+                  </button>
+                  <button
+                    onClick={stopCamera}
+                    className="w-12 h-12 bg-gray-800/80 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <XCircle className="w-6 h-6 text-white" />
+                  </button>
+                </div>
               </div>
               <canvas ref={canvasRef} className="hidden" />
             </div>
@@ -301,39 +300,52 @@ export function CardChecker() {
               </div>
 
               {result && (
-                <div className={`rounded-2xl p-6 ${
-                  result.found 
-                    ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' 
-                    : 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800'
-                }`}>
-                  <div className="flex items-center gap-4">
-                    {result.found ? (
-                      <CheckCircle className="w-12 h-12 text-green-500 flex-shrink-0" />
-                    ) : (
-                      <XCircle className="w-12 h-12 text-yellow-500 flex-shrink-0" />
-                    )}
-                    <div>
+                <div className="space-y-4">
+                  <div className={`rounded-2xl p-6 ${
+                    result.found 
+                      ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' 
+                      : 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800'
+                  }`}>
+                    <div className="flex items-center gap-4">
                       {result.found ? (
-                        <>
-                          <h2 className="text-2xl font-bold text-green-700 dark:text-green-400">
-                            {result.name} Found!
-                          </h2>
-                          <p className="text-green-600 dark:text-green-300">
-                            Ranked #{result.ranking} on the Top 150 Pokemon list
-                          </p>
-                        </>
+                        <CheckCircle className="w-12 h-12 text-green-500 flex-shrink-0" />
                       ) : (
-                        <>
-                          <h2 className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
-                            Not on Top 150 List
-                          </h2>
-                          <p className="text-yellow-600 dark:text-yellow-300">
-                            This Pokemon was not found in the Top 150 list
-                          </p>
-                        </>
+                        <XCircle className="w-12 h-12 text-yellow-500 flex-shrink-0" />
                       )}
+                      <div>
+                        {result.found ? (
+                          <>
+                            <h2 className="text-2xl font-bold text-green-700 dark:text-green-400">
+                              {result.name} Found!
+                            </h2>
+                            <p className="text-green-600 dark:text-green-300">
+                              Ranked #{result.ranking} on the Top 150 Pokemon list
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <h2 className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
+                              Not on Top 150 List
+                            </h2>
+                            <p className="text-yellow-600 dark:text-yellow-300">
+                              This Pokemon was not found in the Top 150 list
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  
+                  {result.found && (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Detected name:
+                      </p>
+                      <p className="text-gray-700 dark:text-gray-300 font-semibold">
+                        {result.name}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
