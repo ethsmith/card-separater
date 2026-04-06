@@ -336,16 +336,14 @@ export function CardChecker() {
                     </div>
                   </div>
                   
-                  {result.found && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                        Detected name:
-                      </p>
-                      <p className="text-gray-700 dark:text-gray-300 font-semibold">
-                        {result.name}
-                      </p>
-                    </div>
-                  )}
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      {result.found ? 'Detected name:' : 'Text scanned from card:'}
+                    </p>
+                    <p className="text-gray-700 dark:text-gray-300 font-semibold whitespace-pre-wrap max-h-24 overflow-y-auto">
+                      {result.found ? result.name : (result.extractedText || 'No text detected')}
+                    </p>
+                  </div>
                 </div>
               )}
 
