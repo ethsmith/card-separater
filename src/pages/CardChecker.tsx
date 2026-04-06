@@ -103,18 +103,19 @@ export function CardChecker() {
           0, 0, cropWidth, cropHeight
         );
         
-        // Apply grayscale with contrast boost - no harsh threshold
-        // Pokemon cards have yellow/white text on various backgrounds
+        // Apply grayscale, contrast boost, and INVERT colors
+        // Tesseract works best with dark text on light background
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
         
         for (let i = 0; i < data.length; i += 4) {
           // Convert to grayscale
           const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          // Boost contrast without harsh threshold
+          // Boost contrast
           const contrast = ((gray - 128) * 1.8) + 128;
-          const val = Math.max(0, Math.min(255, contrast));
-          data[i] = data[i + 1] = data[i + 2] = val;
+          // Invert colors so light text becomes dark text on light background
+          const inverted = 255 - Math.max(0, Math.min(255, contrast));
+          data[i] = data[i + 1] = data[i + 2] = inverted;
         }
         
         ctx.putImageData(imgData, 0, 0);
@@ -261,7 +262,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.0.7
+        v1.0.8
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
