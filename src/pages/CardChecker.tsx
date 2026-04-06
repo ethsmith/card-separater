@@ -103,22 +103,8 @@ export function CardChecker() {
           0, 0, cropWidth, cropHeight
         );
         
-        // Apply grayscale, contrast boost, and INVERT colors
-        // Tesseract works best with dark text on light background
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        
-        for (let i = 0; i < data.length; i += 4) {
-          // Convert to grayscale
-          const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          // Boost contrast
-          const contrast = ((gray - 128) * 1.8) + 128;
-          // Invert colors so light text becomes dark text on light background
-          const inverted = 255 - Math.max(0, Math.min(255, contrast));
-          data[i] = data[i + 1] = data[i + 2] = inverted;
-        }
-        
-        ctx.putImageData(imgData, 0, 0);
+        // Keep original colors - just pass through to Tesseract
+        // The name region was readable before preprocessing
         resolve(canvas.toDataURL('image/png'));
       };
       img.src = imageData;
@@ -158,9 +144,14 @@ export function CardChecker() {
       const croppedImage = await cropToNameRegion(cardImage);
       setCroppedNameImage(croppedImage);
       
-      const { data: { text } } = await Tesseract.recognize(croppedImage, 'eng', {
+      const worker = await Tesseract.createWorker('eng', 1, {
         logger: (m) => console.log(m),
       });
+      await worker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+      });
+      const { data: { text } } = await worker.recognize(croppedImage);
+      await worker.terminate();
 
       console.log('Extracted text:', text);
       const matchResult = findPokemonInText(text);
@@ -262,7 +253,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.0.8
+        v1.1.1
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
