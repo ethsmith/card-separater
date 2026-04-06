@@ -4,8 +4,10 @@ import { Upload, Camera, ArrowLeft, CheckCircle, XCircle, Loader2 } from 'lucide
 import topPokemon from '../../top_pokemon.json';
 import CardDetectionService from '../services/CardDetectionService';
 
-// OCR.space API key - get free key at https://ocr.space/ocrapi
-const OCR_API_KEY = 'K85082837788957'; // Free demo key, replace with your own for production
+// OCR.space API key - set via VITE_OCR_API_KEY environment variable
+// For local dev, create a .env.local file with VITE_OCR_API_KEY=your_key
+// For Vercel, set it in Project Settings → Environment Variables
+const OCR_API_KEY = import.meta.env.VITE_OCR_API_KEY || '';
 
 interface MatchResult {
   found: boolean;
@@ -23,6 +25,7 @@ export function CardChecker() {
   const [error, setError] = useState<string | null>(null);
   const [useCamera, setUseCamera] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [useCardDetection, setUseCardDetection] = useState(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -122,23 +125,28 @@ export function CardChecker() {
     setImagePreview(imageData);
 
     try {
-      // First, use the card detection model to extract just the card
-      const img = new Image();
-      img.src = imageData;
-      await new Promise((resolve) => { img.onload = resolve; });
-      
-      const detector = CardDetectionService.getInstance();
-      await detector.loadModel();
-      const detection = await detector.detectCards(img);
-      
       let cardImage = imageData;
-      if (detection.cards.length > 0) {
-        // Use the first detected card's extracted image
-        cardImage = detection.cards[0].imageData;
-        setProcessedCardImage(cardImage);
-        console.log('Card detected and extracted');
+      
+      // Only use card detection if enabled
+      if (useCardDetection) {
+        const img = new Image();
+        img.src = imageData;
+        await new Promise((resolve) => { img.onload = resolve; });
+        
+        const detector = CardDetectionService.getInstance();
+        await detector.loadModel();
+        const detection = await detector.detectCards(img);
+        
+        if (detection.cards.length > 0) {
+          cardImage = detection.cards[0].imageData;
+          setProcessedCardImage(cardImage);
+          console.log('Card detected and extracted');
+        } else {
+          console.log('No card detected, using original image');
+          setProcessedCardImage(null);
+        }
       } else {
-        console.log('No card detected, using original image');
+        console.log('Card detection disabled, using original image');
         setProcessedCardImage(null);
       }
       
@@ -146,22 +154,30 @@ export function CardChecker() {
       const croppedImage = await cropToNameRegion(cardImage);
       setCroppedNameImage(croppedImage);
       
-      // Use OCR.space API for better text recognition
-      const formData = new FormData();
-      const blob = await fetch(croppedImage).then(r => r.blob());
-      formData.append('file', blob, 'card.png');
-      formData.append('apikey', OCR_API_KEY);
-      formData.append('language', 'eng');
-      formData.append('isOverlayRequired', 'false');
-      formData.append('OCREngine', '2'); // Engine 2 is better for stylized text
-      
-      const response = await fetch('https://api.ocr.space/parse/image', {
+      // Use OCR.space API via Vite proxy to avoid CORS
+      const response = await fetch('/api/ocr', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'apikey': OCR_API_KEY,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          base64Image: croppedImage,
+          language: 'eng',
+          isOverlayRequired: 'false',
+          OCREngine: '2',
+        }),
       });
       
       const result = await response.json();
       console.log('OCR.space result:', result);
+      
+      // Check for API errors
+      if (result.IsErroredOnProcessing || result.OCRExitCode !== 1) {
+        const errorMsg = result.ErrorMessage || result.ErrorDetails || 'OCR processing failed';
+        console.error('OCR.space error:', errorMsg);
+        throw new Error(errorMsg);
+      }
       
       let text = '';
       if (result.ParsedResults && result.ParsedResults.length > 0) {
@@ -173,9 +189,9 @@ export function CardChecker() {
       console.log('Extracted text:', cleanedText);
       const matchResult = findPokemonInText(cleanedText);
       setResult(matchResult);
-    } catch (err) {
+    } catch (err: any) {
       console.error('OCR error:', err);
-      setError('Failed to read text from the card. Please try a clearer image.');
+      setError(err.message || 'Failed to read text from the card. Please try a clearer image.');
     } finally {
       setIsProcessing(false);
     }
@@ -270,7 +286,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.2.0
+        v1.2.4
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
@@ -292,7 +308,19 @@ export function CardChecker() {
 
         <div className="space-y-6">
           {!imagePreview && !useCamera && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <>
+              <label className="flex items-center gap-3 cursor-pointer w-fit mx-auto">
+                <input
+                  type="checkbox"
+                  checked={useCardDetection}
+                  onChange={(e) => setUseCardDetection(e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-gray-700 dark:text-gray-300">
+                  Use AI card detection (uncheck for pre-cropped images)
+                </span>
+              </label>
+              <div className="grid md:grid-cols-2 gap-4">
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
@@ -335,7 +363,8 @@ export function CardChecker() {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+            </>
           )}
 
           {useCamera && (
