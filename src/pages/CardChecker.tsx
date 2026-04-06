@@ -87,10 +87,10 @@ export function CardChecker() {
         const ctx = canvas.getContext('2d')!;
         
         // Crop to the name region (top area of card)
-        // Name is in the top ~5-12% of the card height, starting after "BASIC" tag
-        const cropX = Math.round(img.width * 0.12);
+        // Start after "BASIC" tag (~18% from left) to avoid capturing it
+        const cropX = Math.round(img.width * 0.18);
         const cropY = Math.round(img.height * 0.03);
-        const cropWidth = Math.round(img.width * 0.55);
+        const cropWidth = Math.round(img.width * 0.45);
         const cropHeight = Math.round(img.height * 0.07);
         
         canvas.width = cropWidth;
@@ -153,8 +153,10 @@ export function CardChecker() {
       const { data: { text } } = await worker.recognize(croppedImage);
       await worker.terminate();
 
-      console.log('Extracted text:', text);
-      const matchResult = findPokemonInText(text);
+      // Strip special characters except ' ( ) and letters/numbers/spaces
+      const cleanedText = text.replace(/[^a-zA-Z0-9\s'()]/g, '').trim();
+      console.log('Extracted text:', cleanedText);
+      const matchResult = findPokemonInText(cleanedText);
       setResult(matchResult);
     } catch (err) {
       console.error('OCR error:', err);
@@ -253,7 +255,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.1.1
+        v1.1.3
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
