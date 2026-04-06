@@ -116,7 +116,7 @@ export function CardChecker() {
     });
   };
 
-  const processImage = async (imageData: string) => {
+  const processImage = useCallback(async (imageData: string) => {
     setIsProcessing(true);
     setError(null);
     setResult(null);
@@ -128,6 +128,7 @@ export function CardChecker() {
       let cardImage = imageData;
       
       // Only use card detection if enabled
+      console.log('useCardDetection:', useCardDetection);
       if (useCardDetection) {
         const img = new Image();
         img.src = imageData;
@@ -195,7 +196,7 @@ export function CardChecker() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [useCardDetection]);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,7 +210,7 @@ export function CardChecker() {
       };
       reader.readAsDataURL(file);
     },
-    []
+    [processImage]
   );
 
   const handleDrop = useCallback(
@@ -225,7 +226,7 @@ export function CardChecker() {
       };
       reader.readAsDataURL(file);
     },
-    []
+    [processImage]
   );
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -286,7 +287,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.2.4
+        v1.2.5
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
