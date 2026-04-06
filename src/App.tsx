@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ImageUploader } from './components/ImageUploader';
 import { CardGallery } from './components/CardGallery';
 import { OriginalImage } from './components/OriginalImage';
 import CardDetectionService from './services/CardDetectionService';
 import type { DetectedCard } from './services/CardDetectionService';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Search } from 'lucide-react';
 
 function App() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -94,6 +95,13 @@ function App() {
               AI model ready ✓
             </p>
           )}
+          <Link
+            to="/checker"
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+          >
+            <Search className="w-5 h-5" />
+            Check Top 150 Pokemon
+          </Link>
         </header>
 
         <div className="space-y-6">
