@@ -75,7 +75,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.1.3
+        v1.2.0
       </div>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <header className="text-center mb-10">

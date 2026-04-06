@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, Camera, ArrowLeft, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import Tesseract from 'tesseract.js';
 import topPokemon from '../../top_pokemon.json';
 import CardDetectionService from '../services/CardDetectionService';
+
+// OCR.space API key - get free key at https://ocr.space/ocrapi
+const OCR_API_KEY = 'K85082837788957'; // Free demo key, replace with your own for production
 
 interface MatchResult {
   found: boolean;
@@ -144,14 +146,27 @@ export function CardChecker() {
       const croppedImage = await cropToNameRegion(cardImage);
       setCroppedNameImage(croppedImage);
       
-      const worker = await Tesseract.createWorker('eng', 1, {
-        logger: (m) => console.log(m),
+      // Use OCR.space API for better text recognition
+      const formData = new FormData();
+      const blob = await fetch(croppedImage).then(r => r.blob());
+      formData.append('file', blob, 'card.png');
+      formData.append('apikey', OCR_API_KEY);
+      formData.append('language', 'eng');
+      formData.append('isOverlayRequired', 'false');
+      formData.append('OCREngine', '2'); // Engine 2 is better for stylized text
+      
+      const response = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData,
       });
-      await worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-      });
-      const { data: { text } } = await worker.recognize(croppedImage);
-      await worker.terminate();
+      
+      const result = await response.json();
+      console.log('OCR.space result:', result);
+      
+      let text = '';
+      if (result.ParsedResults && result.ParsedResults.length > 0) {
+        text = result.ParsedResults[0].ParsedText || '';
+      }
 
       // Strip special characters except ' ( ) and letters/numbers/spaces
       const cleanedText = text.replace(/[^a-zA-Z0-9\s'()]/g, '').trim();
@@ -255,7 +270,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.1.3
+        v1.2.0
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
