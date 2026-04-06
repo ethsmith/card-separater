@@ -15,6 +15,8 @@ interface MatchResult {
 export function CardChecker() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [processedCardImage, setProcessedCardImage] = useState<string | null>(null);
+  const [croppedNameImage, setCroppedNameImage] = useState<string | null>(null);
   const [result, setResult] = useState<MatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [useCamera, setUseCamera] = useState(false);
@@ -124,6 +126,8 @@ export function CardChecker() {
     setIsProcessing(true);
     setError(null);
     setResult(null);
+    setProcessedCardImage(null);
+    setCroppedNameImage(null);
     setImagePreview(imageData);
 
     try {
@@ -140,13 +144,16 @@ export function CardChecker() {
       if (detection.cards.length > 0) {
         // Use the first detected card's extracted image
         cardImage = detection.cards[0].imageData;
+        setProcessedCardImage(cardImage);
         console.log('Card detected and extracted');
       } else {
         console.log('No card detected, using original image');
+        setProcessedCardImage(null);
       }
       
       // Crop to name region and preprocess
       const croppedImage = await cropToNameRegion(cardImage);
+      setCroppedNameImage(croppedImage);
       
       const { data: { text } } = await Tesseract.recognize(croppedImage, 'eng', {
         logger: (m) => console.log(m),
@@ -242,6 +249,8 @@ export function CardChecker() {
 
   const handleReset = () => {
     setImagePreview(null);
+    setProcessedCardImage(null);
+    setCroppedNameImage(null);
     setResult(null);
     setError(null);
     stopCamera();
@@ -250,7 +259,7 @@ export function CardChecker() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
-        v1.0.4
+        v1.0.5
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
@@ -364,12 +373,35 @@ export function CardChecker() {
           {imagePreview && !isProcessing && (
             <div className="space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 text-center">Original Image</p>
                 <img
                   src={imagePreview}
                   alt="Scanned card"
-                  className="max-h-96 mx-auto rounded-lg"
+                  className="max-h-64 mx-auto rounded-lg"
                 />
               </div>
+
+              {processedCardImage && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 text-center">Detected Card (extracted by AI)</p>
+                  <img
+                    src={processedCardImage}
+                    alt="Detected card"
+                    className="max-h-64 mx-auto rounded-lg"
+                  />
+                </div>
+              )}
+
+              {croppedNameImage && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 text-center">Name Region (sent to OCR)</p>
+                  <img
+                    src={croppedNameImage}
+                    alt="Cropped name region"
+                    className="max-h-24 mx-auto rounded-lg border border-gray-300"
+                  />
+                </div>
+              )}
 
               {result && (
                 <div className="space-y-4">
