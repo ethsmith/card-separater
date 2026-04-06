@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Upload, Camera, ArrowLeft, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import topPokemon from '../../top_pokemon.json';
+import CardDetectionService from '../services/CardDetectionService';
 
 interface MatchResult {
   found: boolean;
@@ -76,24 +77,39 @@ export function CardChecker() {
     };
   };
 
-  const preprocessImage = (imageData: string): Promise<string> => {
+  const cropToNameRegion = (imageData: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d')!;
-        canvas.width = img.width;
-        canvas.height = img.height;
         
-        ctx.drawImage(img, 0, 0);
+        // Crop to the name region (top-left area of card)
+        // Based on standard Pokemon card proportions
+        const cropX = Math.round(img.width * 0.14);
+        const cropY = Math.round(img.height * 0.04);
+        const cropWidth = Math.round(img.width * 0.50);
+        const cropHeight = Math.round(img.height * 0.08);
         
+        canvas.width = cropWidth;
+        canvas.height = cropHeight;
+        
+        // Draw cropped region
+        ctx.drawImage(
+          img,
+          cropX, cropY, cropWidth, cropHeight,
+          0, 0, cropWidth, cropHeight
+        );
+        
+        // Apply grayscale and threshold for clean OCR
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
         
         for (let i = 0; i < data.length; i += 4) {
+          // Convert to grayscale
           const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          const contrast = ((gray - 128) * 1.5) + 128;
-          const val = contrast > 140 ? 255 : contrast < 80 ? 0 : contrast;
+          // Apply threshold - force to black or white
+          const val = gray > 140 ? 255 : 0;
           data[i] = data[i + 1] = data[i + 2] = val;
         }
         
@@ -111,9 +127,28 @@ export function CardChecker() {
     setImagePreview(imageData);
 
     try {
-      const processedImage = await preprocessImage(imageData);
+      // First, use the card detection model to extract just the card
+      const img = new Image();
+      img.src = imageData;
+      await new Promise((resolve) => { img.onload = resolve; });
       
-      const { data: { text } } = await Tesseract.recognize(processedImage, 'eng', {
+      const detector = CardDetectionService.getInstance();
+      await detector.loadModel();
+      const detection = await detector.detectCards(img);
+      
+      let cardImage = imageData;
+      if (detection.cards.length > 0) {
+        // Use the first detected card's extracted image
+        cardImage = detection.cards[0].imageData;
+        console.log('Card detected and extracted');
+      } else {
+        console.log('No card detected, using original image');
+      }
+      
+      // Crop to name region and preprocess
+      const croppedImage = await cropToNameRegion(cardImage);
+      
+      const { data: { text } } = await Tesseract.recognize(croppedImage, 'eng', {
         logger: (m) => console.log(m),
       });
 
@@ -214,6 +249,9 @@ export function CardChecker() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div className="absolute top-2 right-4 text-xs text-gray-400 dark:text-gray-500">
+        v1.0.4
+      </div>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Link 
           to="/" 
